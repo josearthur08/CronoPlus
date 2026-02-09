@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>CronoPlus - Sistema de Cronometragem</title>
+    <link rel="stylesheet" href="styles-new.css">
+</head>
+<body>
+    <div id="app">
+        <!-- TELA DE SELEÇÃO -->
+        <div id="screenSexSelection" class="screen active">
+            <div class="sex-selection-container">
+                <h1>CRONOPLUS</h1>
+                <h2>Selecione o Gênero</h2>
+                <p class="subtitle">Este dispositivo será para qual gênero?</p>
+                <div class="sex-buttons-group">
+                    <button id="btnMasculino" class="sex-button masculine">
+                        <span class="icon">♂</span>
+                        <span class="label">MASCULINO</span>
+                    </button>
+                    <button id="btnFeminino" class="sex-button feminine">
+                        <span class="icon">♀</span>
+                        <span class="label">FEMININO</span>
+                    </button>
+                </div>
+                <p class="warning">⚠️ Configure uma vez. Reset para mudar.</p>
+            </div>
+        </div>
+
+        <!-- TELA PRINCIPAL -->
+        <div id="screenMain" class="screen">
+            <div class="header">
+                <div class="header-left">
+                    <h1>CRONOPLUS</h1>
+                    <span id="genderBadge" class="gender-badge"></span>
+                </div>
+                <button id="btnReset" class="btn btn-danger btn-small">↺ Reset</button>
+            </div>
+
+            <div class="content">
+                <!-- CRONÔMETRO -->
+                <section class="chrono-section">
+                    <div class="chrono-card">
+                        <h3>⏱️ Cronômetro</h3>
+                        <div id="chronometerDisplay" class="chrono-display">00:00:00</div>
+                        <p class="chrono-status" id="chronoMsg">Cronômetro parado</p>
+                        <button id="btnStart" class="btn btn-primary btn-large">▶ Iniciar Cronômetro</button>
+                    </div>
+                </section>
+
+                <!-- REGISTRO -->
+                <section class="registration-section">
+                    <div class="registration-card">
+                        <h3>📝 Registrar Chegada</h3>
+                        <div class="input-group">
+                            <input id="runnerNumber" class="input-field" type="number" placeholder="Nº corredor" min="1">
+                            <button id="btnRegister" class="btn btn-success btn-large">✓</button>
+                        </div>
+                        <div id="message" class="registration-message"></div>
+                    </div>
+                </section>
+
+                <!-- PLACAR -->
+                <section class="scoreboard-section">
+                    <div class="scoreboard-header">
+                        <h3>📊 Placar - <span id="scoreboardGender"></span></h3>
+                        <span class="runner-count" id="runnerCount">0</span>
+                    </div>
+                    <div id="scoreboard" class="scoreboard">
+                        <div class="empty-state">Aguardando registros...</div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="action-section">
+                <button id="btnReport" class="btn btn-primary btn-large">📊 Gerar Planilha Final</button>
+            </div>
+        </div>
+
+        <!-- RELATÓRIO -->
+        <div id="screenReport" class="screen">
+            <div class="report-container">
+                <div class="report-header">
+                    <h1>RELATÓRIO FINAL</h1>
+                    <p id="reportTime" class="report-timestamp"></p>
+                </div>
+                <div class="report-content" id="reportBody"></div>
+                <div class="report-actions">
+                    <button id="btnPrint" class="btn btn-primary">🖨️ Imprimir</button>
+                    <button id="btnExcel" class="btn btn-success">📥 Excel</button>
+                    <button id="btnNew" class="btn btn-primary">🔄 Nova</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.full.min.js?v=20260209007"></script>
+    <script src="app-v2.js?v=20260209007"></script>
+</body>
+</html>

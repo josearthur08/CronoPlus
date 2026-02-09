@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRONOPLUS - Teste</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .box { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin: 20px 0 10px; }
+        button {
+            background: #2563eb;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover { background: #1d4ed8; }
+        .gender-button { font-size: 32px; padding: 20px; }
+        .masculine { background: #3b82f6; }
+        .masculine:hover { background: #2563eb; }
+        .feminine { background: #ec4899; }
+        .feminine:hover { background: #db2777; }
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .log { 
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log div { margin: 5px 0; }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .warning { color: #ff0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 CRONOPLUS - Teste de Funcionalidade</h1>
+        
+        <div class="box">
+            <h2>1. Seleção de Gênero</h2>
+            <button id="testMasculino" class="gender-button masculine">👨 MASCULINO</button>
+            <button id="testFeminino" class="gender-button feminine">👩 FEMININO</button>
+        </div>
+
+        <div class="box">
+            <h2>2. Registro de Corredor</h2>
+            <input type="number" id="testRunnerNumber" placeholder="Número do corredor" min="1">
+            <button id="testRegister">Registrar Corredor</button>
+        </div>
+
+        <div class="box">
+            <h2>3. Cronômetro</h2>
+            <button id="testStartChrono">Iniciar Cronômetro</button>
+            <p id="testChrono">00:00:00</p>
+        </div>
+
+        <div class="box">
+            <h2>4. Console do Sistema</h2>
+            <div class="log" id="testLog"></div>
+        </div>
+
+        <div class="box">
+            <h2>5. Estado Atual</h2>
+            <pre id="testState" style="background: #eee; padding: 10px; border-radius: 4px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+
+    <script>
+        let testGender = null;
+        let testRunners = [];
+        let testChrono = null;
+        let testChronoRunning = false;
+        let testChronoInterval = null;
+
+        const logEl = document.getElementById('testLog');
+        const stateEl = document.getElementById('testState');
+
+        function log(msg, type = 'default') {
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            if (type === 'success') div.className = 'success';
+            if (type === 'error') div.className = 'error';
+            if (type === 'warning') div.className = 'warning';
+            logEl.appendChild(div);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        function updateState() {
+            stateEl.textContent = JSON.stringify({
+                gender: testGender,
+                runnerCount: testRunners.length,
+                chronometerRunning: testChronoRunning,
+                runners: testRunners
+            }, null, 2);
+        }
+
+        // Seleção de gênero
+        document.getElementById('testMasculino').addEventListener('click', () => {
+            testGender = 'M';
+            log('✅ Gênero selecionado: MASCULINO', 'success');
+            updateState();
+        });
+
+        document.getElementById('testFeminino').addEventListener('click', () => {
+            testGender = 'F';
+            log('✅ Gênero selecionado: FEMININO', 'success');
+            updateState();
+        });
+
+        // Cronômetro
+        document.getElementById('testStartChrono').addEventListener('click', () => {
+            if (testChronoRunning) {
+                log('⚠️ Cronômetro já está rodando', 'warning');
+                return;
+            }
+            testChrono = new Date().getTime();
+            testChronoRunning = true;
+            log('⏱️ Cronômetro iniciado', 'success');
+            updateState();
+
+            testChronoInterval = setInterval(() => {
+                const elapsed = new Date().getTime() - testChrono;
+                const seconds = Math.floor(elapsed / 1000);
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                document.getElementById('testChrono').textContent = 
+                    `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }, 100);
+        });
+
+        // Registro
+        document.getElementById('testRegister').addEventListener('click', () => {
+            if (!testGender) {
+                log('❌ Selecione gênero primeiro', 'error');
+                return;
+            }
+            if (!testChronoRunning) {
+                log('❌ Inicie o cronômetro primeiro', 'error');
+                return;
+            }
+
+            const input = document.getElementById('testRunnerNumber');
+            const num = input.value.trim();
+
+            if (!num) {
+                log('❌ Insira número do corredor', 'error');
+                return;
+            }
+
+            const elapsed = Math.floor((new Date().getTime() - testChrono) / 1000);
+            const runner = {
+                number: parseInt(num),
+                gender: testGender,
+                time: elapsed
+            };
+
+            testRunners.push(runner);
+            log(`✅ Corredor #${num} registrado (${elapsed}s)`, 'success');
+            input.value = '';
+            input.focus();
+            updateState();
+        });
+
+        log('🚀 Sistema de teste iniciado', 'success');
+        updateState();
+    </script>
+</body>
+</html>

@@ -1,0 +1,623 @@
+/**
+ * CRONOPLUS - Sistema de Cronometragem de Corrida
+ * Aplicação completa para registrar chegadas de corredores em tempo real
+ */
+
+// ============================================================================
+// LIMPEZA INICIAL
+// ============================================================================
+
+// ⚠️ DESCOMENTE A LINHA ABAIXO PARA FORÇAR RESET TOTAL DO SISTEMA
+// localStorage.clear();
+
+// Alternativa: Forçar tela de seleção
+// localStorage.removeItem('cronoplus_gender');
+
+// ============================================================================
+// VARIÁVEIS GLOBAIS
+// ============================================================================
+
+let appState = {
+    gender: null,
+    runners: [],
+    chronometerStartTime: null,
+    chronometerRunning: false,
+    raceFinished: false,
+    chronometerIntervalId: null
+};
+
+// Carregar dados do localStorage ao inicializar
+function loadAppState() {
+    try {
+        const savedGender = localStorage.getItem('cronoplus_gender');
+        const savedRunners = localStorage.getItem('cronoplus_runners');
+        const savedChrono = localStorage.getItem('cronoplus_chrono_start');
+        const savedRunning = localStorage.getItem('cronoplus_chrono_running');
+        const savedFinished = localStorage.getItem('cronoplus_race_finished');
+        
+        if (savedGender) appState.gender = savedGender;
+        if (savedRunners) appState.runners = JSON.parse(savedRunners);
+        if (savedChrono) appState.chronometerStartTime = savedChrono;
+        if (savedRunning) appState.chronometerRunning = savedRunning === 'true';
+        if (savedFinished) appState.raceFinished = savedFinished === 'true';
+    } catch (e) {
+        console.error('Erro ao carregar estado:', e);
+        resetAllData();
+    }
+}
+
+const genderLabels = {
+    M: 'Masculino',
+    F: 'Feminino'
+};
+
+// ============================================================================
+// INICIALIZAÇÃO
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 CRONOPLUS iniciando...');
+    loadAppState();
+    console.log('📊 Estado carregado:', appState);
+    initializeApp();
+    console.log('✅ App inicializado');
+});
+
+function initializeApp() {
+    attachEventListeners();
+    
+    // Verificar se há uma corrida em andamento
+    if (appState.gender) {
+        showScreen('screenMain');
+        updateGenderDisplay();
+        updateScoreboard();
+        updateChronometerButton();
+        
+        // Se o cronômetro estava rodando, reiniciar a exibição
+        if (appState.chronometerStartTime) {
+            updateStartTimeDisplay();
+            if (appState.chronometerRunning) {
+                startChronometerDisplay();
+            } else {
+                // Se estava parado, mostrar o tempo final
+                const now = new Date().getTime();
+                const elapsed = now - appState.chronometerStartTime;
+                updateChronometerDisplay(elapsed);
+            }
+        }
+    } else {
+        showScreen('screenSexSelection');
+    }
+}
+
+// ============================================================================
+// EVENT LISTENERS
+// ============================================================================
+
+function attachEventListeners() {
+    console.log('📌 Registrando event listeners...');
+    
+    // Seleção de Sexo - com verificação
+    const btnM = document.getElementById('btnMasculino');
+    const btnF = document.getElementById('btnFeminino');
+    
+    console.log('🔘 Buscando botões:', { btnM: !!btnM, btnF: !!btnF });
+    
+    if (btnM) {
+        btnM.addEventListener('click', () => {
+            console.log('👨 Botão Masculino clicado');
+            selectGender('M');
+        });
+    } else {
+        console.warn('⚠️ Botão Masculino não encontrado!');
+    }
+    
+    if (btnF) {
+        btnF.addEventListener('click', () => {
+            console.log('👩 Botão Feminino clicado');
+            selectGender('F');
+        });
+    } else {
+        console.warn('⚠️ Botão Feminino não encontrado!');
+    }
+
+    // Cronômetro
+    const btnStartChrono = document.getElementById('btnStartChrono');
+    if (btnStartChrono) {
+        btnStartChrono.addEventListener('click', startChronometerClick);
+    }
+
+    // Registro
+    const btnRegister = document.getElementById('btnRegister');
+    const runnerNumber = document.getElementById('runnerNumber');
+    if (btnRegister) {
+        btnRegister.addEventListener('click', registerRunner);
+    }
+    if (runnerNumber) {
+        runnerNumber.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') registerRunner();
+        });
+    }
+
+    // Finalização
+    const btnGenerateReport = document.getElementById('btnGenerateReport');
+    if (btnGenerateReport) {
+        btnGenerateReport.addEventListener('click', generateReport);
+    }
+    
+    const btnResetRace = document.getElementById('btnResetRace');
+    if (btnResetRace) {
+        btnResetRace.addEventListener('click', resetRace);
+    }
+
+    // Relatório
+    const btnPrint = document.getElementById('btnPrint');
+    if (btnPrint) {
+        btnPrint.addEventListener('click', printReport);
+    }
+    
+    const btnDownloadExcel = document.getElementById('btnDownloadExcel');
+    if (btnDownloadExcel) {
+        btnDownloadExcel.addEventListener('click', downloadExcel);
+    }
+    
+    const btnNewRace = document.getElementById('btnNewRace');
+    if (btnNewRace) {
+        btnNewRace.addEventListener('click', startNewRace);
+    }
+}
+
+// ============================================================================
+// TELAS
+// ============================================================================
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    document.getElementById(screenId).classList.add('active');
+}
+
+// ============================================================================
+// SELEÇÃO DE SEXO
+// ============================================================================
+
+function selectGender(gender) {
+    appState.gender = gender;
+    localStorage.setItem('cronoplus_gender', gender);
+    updateGenderDisplay();
+    showScreen('screenMain');
+    document.getElementById('runnerNumber').focus();
+}
+
+function updateGenderDisplay() {
+    if (appState.gender) {
+        const badge = document.getElementById('genderBadge');
+        const scoreboardGender = document.getElementById('scoreboardGender');
+        const genderText = genderLabels[appState.gender];
+        const genderClass = appState.gender === 'M' ? 'masculine' : 'feminine';
+        
+        badge.textContent = genderText;
+        badge.className = `gender-badge ${genderClass}`;
+        
+        scoreboardGender.textContent = genderText;
+    }
+}
+
+// ============================================================================
+// CRONÔMETRO
+// ============================================================================
+
+function startChronometerClick() {
+    if (!appState.chronometerRunning) {
+        startChronometerClick_Internal();
+    }
+}
+
+function startChronometerClick_Internal() {
+    if (!appState.chronometerStartTime) {
+        const now = new Date();
+        appState.chronometerStartTime = now.getTime();
+        localStorage.setItem('cronoplus_chrono_start', appState.chronometerStartTime);
+        
+        appState.chronometerRunning = true;
+        localStorage.setItem('cronoplus_chrono_running', 'true');
+        
+        updateChronometerButton();
+        startChronometerDisplay();
+        updateStartTimeDisplay();
+        
+        showMessage('✓ Cronômetro iniciado!', 'success');
+    }
+}
+
+function startChronometerDisplay() {
+    if (appState.chronometerIntervalId) {
+        clearInterval(appState.chronometerIntervalId);
+    }
+
+    appState.chronometerIntervalId = setInterval(() => {
+        if (appState.chronometerStartTime) {
+            const now = new Date().getTime();
+            const elapsed = now - appState.chronometerStartTime;
+            updateChronometerDisplay(elapsed);
+        }
+    }, 100);
+
+    updateChronometerButton();
+}
+
+function updateChronometerDisplay(elapsedMs) {
+    const totalSeconds = Math.floor(elapsedMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const display = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    document.getElementById('chronometerDisplay').textContent = display;
+
+    const statusEl = document.getElementById('chronoStatus');
+    if (appState.chronometerRunning) {
+        statusEl.textContent = '⏱️ Cronômetro em andamento...';
+    }
+}
+
+function updateStartTimeDisplay() {
+    if (appState.chronometerStartTime) {
+        const startDate = new Date(appState.chronometerStartTime);
+        const timeString = startDate.toLocaleTimeString('pt-BR');
+        document.getElementById('chronoStartTime').textContent = `Horário de início: ${timeString}`;
+    }
+}
+
+function updateChronometerButton() {
+    const btn = document.getElementById('btnStartChrono');
+    if (appState.chronometerRunning) {
+        btn.disabled = true;
+        btn.textContent = '⏹️ Cronômetro em andamento';
+    } else {
+        btn.disabled = false;
+        btn.textContent = '▶ Iniciar Cronômetro';
+    }
+}
+
+function stopChronometerDisplay() {
+    if (appState.chronometerIntervalId) {
+        clearInterval(appState.chronometerIntervalId);
+        appState.chronometerIntervalId = null;
+    }
+}
+
+// ============================================================================
+// REGISTRO DE CHEGADA
+// ============================================================================
+
+function registerRunner() {
+    if (appState.raceFinished) {
+        showMessage('❌ Corrida finalizada. Impossível registrar novos corredores.', 'error');
+        return;
+    }
+
+    if (!appState.chronometerRunning) {
+        showMessage('❌ Inicie o cronômetro primeiro!', 'error');
+        return;
+    }
+
+    const input = document.getElementById('runnerNumber');
+    const runnerNumber = input.value.trim();
+
+    if (!runnerNumber) {
+        showMessage('❌ Insira o número do corredor!', 'error');
+        return;
+    }
+
+    if (!Number.isInteger(Number(runnerNumber)) || Number(runnerNumber) <= 0) {
+        showMessage('❌ O número deve ser um inteiro positivo!', 'error');
+        return;
+    }
+
+    // Verificar se o corredor já foi registrado
+    const existingRunner = appState.runners.find(r => r.number == runnerNumber && r.gender === appState.gender);
+    if (existingRunner) {
+        showMessage(`⚠️ Corredor #${runnerNumber} já foi registrado!`, 'error');
+        return;
+    }
+
+    // Registrar novo corredor
+    const now = new Date().getTime();
+    const timeElapsed = now - appState.chronometerStartTime;
+    const totalSeconds = Math.floor(timeElapsed / 1000);
+
+    const runner = {
+        id: Date.now() + Math.random(),
+        number: parseInt(runnerNumber),
+        gender: appState.gender,
+        arrivalTime: now,
+        elapsedSeconds: totalSeconds
+    };
+
+    appState.runners.push(runner);
+    saveRunners();
+
+    showMessage(`✓ Corredor #${runnerNumber} registrado! (${formatTime(totalSeconds)})`, 'success');
+
+    input.value = '';
+    input.focus();
+
+    updateScoreboard();
+}
+
+// ============================================================================
+// PLACAR EM TEMPO REAL
+// ============================================================================
+
+function updateScoreboard() {
+    const scoreboardEl = document.getElementById('scoreboardContainer');
+    
+    // Filtrar corredores do gênero atual
+    const currentGenderRunners = appState.runners.filter(r => r.gender === appState.gender);
+
+    if (currentGenderRunners.length === 0) {
+        scoreboardEl.innerHTML = '<div class="empty-state">Aguardando registros...</div>';
+        document.getElementById('totalRunners').textContent = '0 corredores';
+        return;
+    }
+
+    // Ordenar por tempo de chegada
+    const sorted = [...currentGenderRunners].sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+    // Calcular colocações
+    const runners = sorted.map((runner, index) => ({
+        ...runner,
+        placement: index + 1
+    }));
+
+    // Renderizar placar
+    scoreboardEl.innerHTML = runners.map(runner => `
+        <div class="runner-row">
+            <div class="runner-position">${runner.placement}º</div>
+            <div class="runner-number">#${runner.number}</div>
+            <div class="runner-time">${formatTime(runner.elapsedSeconds)}</div>
+        </div>
+    `).join('');
+
+    document.getElementById('totalRunners').textContent = `${currentGenderRunners.length} corredor${currentGenderRunners.length !== 1 ? 'es' : ''}`;
+}
+
+// ============================================================================
+// FINALIZAÇÃO E RELATÓRIO
+// ============================================================================
+
+function generateReport() {
+    if (!appState.chronometerStartTime) {
+        showMessage('❌ Nenhuma corrida foi iniciada!', 'error');
+        return;
+    }
+
+    if (appState.runners.length === 0) {
+        showMessage('❌ Nenhum corredor foi registrado!', 'error');
+        return;
+    }
+
+    appState.raceFinished = true;
+    localStorage.setItem('cronoplus_race_finished', 'true');
+
+    stopChronometerDisplay();
+
+    const reportHTML = generateReportHTML();
+    document.getElementById('reportContent').innerHTML = reportHTML;
+
+    const now = new Date();
+    document.getElementById('reportTimestamp').textContent = `Gerado em: ${now.toLocaleString('pt-BR')}`;
+
+    showScreen('screenReport');
+}
+
+function generateReportHTML() {
+    // Agrupar corredores por gênero
+    const runnersByGender = {
+        M: appState.runners.filter(r => r.gender === 'M'),
+        F: appState.runners.filter(r => r.gender === 'F')
+    };
+
+    let html = '';
+
+    ['M', 'F'].forEach(gender => {
+        const runners = runnersByGender[gender];
+        if (runners.length === 0) return;
+
+        // Ordenar por tempo
+        const sorted = [...runners].sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+        html += `
+            <div class="report-section">
+                <h2 class="report-section-title">${genderLabels[gender].toUpperCase()}</h2>
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">COL.</th>
+                            <th style="width: 15%;">NÚMERO</th>
+                            <th style="width: 30%;">TEMPO</th>
+                            <th style="width: 10%;">GÊNERO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sorted.map((runner, index) => `
+                            <tr>
+                                <td><strong>${index + 1}º</strong></td>
+                                <td>#${runner.number}</td>
+                                <td><strong>${formatTime(runner.elapsedSeconds)}</strong></td>
+                                <td>${genderLabels[runner.gender]}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+
+    // Resumo geral
+    html += `
+        <div class="report-section">
+            <h2 class="report-section-title">RESUMO GERAL</h2>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>GÊNERO</th>
+                        <th>TOTAL DE CORREDORES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.entries(runnersByGender).map(([gender, runners]) => 
+                        runners.length > 0 ? `
+                            <tr>
+                                <td>${genderLabels[gender]}</td>
+                                <td>${runners.length}</td>
+                            </tr>
+                        ` : ''
+                    ).join('')}
+                    <tr style="background-color: #dbeafe; font-weight: 700;">
+                        <td>TOTAL</td>
+                        <td>${appState.runners.length}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    return html;
+}
+
+function printReport() {
+    window.print();
+}
+
+function downloadExcel() {
+    const workbook = XLSX.utils.book_new();
+
+    ['M', 'F'].forEach(gender => {
+        const runners = appState.runners.filter(r => r.gender === gender);
+        if (runners.length === 0) return;
+
+        const sorted = [...runners].sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+        const data = sorted.map((runner, index) => ({
+            'Colocação': index + 1,
+            'Número': runner.number,
+            'Tempo': formatTime(runner.elapsedSeconds),
+            'Gênero': genderLabels[runner.gender]
+        }));
+
+        const sheet = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(workbook, sheet, genderLabels[gender]);
+    });
+
+    // Adicionar resumo
+    const summaryData = [
+        { 'Gênero': 'Masculino', 'Total de Corredores': appState.runners.filter(r => r.gender === 'M').length },
+        { 'Gênero': 'Feminino', 'Total de Corredores': appState.runners.filter(r => r.gender === 'F').length },
+        { 'Gênero': 'TOTAL', 'Total de Corredores': appState.runners.length }
+    ];
+
+    const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumo');
+
+    const fileName = `Cronometragem_Corrida_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+}
+
+function startNewRace() {
+    if (confirm('Tem certeza que deseja iniciar uma nova corrida? Todos os dados serão apagados.')) {
+        resetAllData();
+        showScreen('screenSexSelection');
+    }
+}
+
+function resetRace() {
+    if (confirm('Tem certeza que deseja resetar a corrida? Todos os dados serão apagados.')) {
+        resetAllData();
+        showScreen('screenSexSelection');
+    }
+}
+
+function resetAllData() {
+    appState = {
+        gender: null,
+        runners: [],
+        chronometerStartTime: null,
+        chronometerRunning: false,
+        raceFinished: false,
+        chronometerIntervalId: null
+    };
+
+    localStorage.removeItem('cronoplus_gender');
+    localStorage.removeItem('cronoplus_runners');
+    localStorage.removeItem('cronoplus_chrono_start');
+    localStorage.removeItem('cronoplus_chrono_running');
+    localStorage.removeItem('cronoplus_race_finished');
+
+    stopChronometerDisplay();
+    document.getElementById('chronometerDisplay').textContent = '00:00:00';
+    document.getElementById('chronoStatus').textContent = 'Cronômetro parado';
+    document.getElementById('chronoStartTime').textContent = 'Horário de início: --:--:--';
+    
+    updateChronometerButton();
+    updateScoreboard();
+}
+
+// ============================================================================
+// UTILITÁRIOS
+// ============================================================================
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function showMessage(message, type = 'info') {
+    const msgEl = document.getElementById('registrationMessage');
+    msgEl.textContent = message;
+    msgEl.className = `registration-message ${type}`;
+
+    setTimeout(() => {
+        msgEl.textContent = '';
+        msgEl.className = 'registration-message';
+    }, 3000);
+}
+
+function saveRunners() {
+    localStorage.setItem('cronoplus_runners', JSON.stringify(appState.runners));
+}
+
+// ============================================================================
+// SINCRONIZAÇÃO EM TEMPO REAL (Ao retornar ao tab)
+// ============================================================================
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && appState.chronometerRunning) {
+        startChronometerDisplay();
+    }
+});
+
+// ============================================================================
+// SINCRONIZAÇÃO DE ARMAZENAMENTO (Para múltiplos tabs)
+// ============================================================================
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'cronoplus_runners') {
+        appState.runners = JSON.parse(e.newValue || '[]');
+        updateScoreboard();
+    }
+    if (e.key === 'cronoplus_chrono_running') {
+        appState.chronometerRunning = e.newValue === 'true';
+        if (appState.chronometerRunning) {
+            startChronometerDisplay();
+        } else {
+            stopChronometerDisplay();
+        }
+        updateChronometerButton();
+    }
+});
