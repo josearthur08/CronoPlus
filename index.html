@@ -35,8 +35,10 @@
                     <h1>CRONOPLUS</h1>
                     <span id="genderBadge" class="gender-badge"></span>
                 </div>
-                <button id="btnReset" class="btn btn-danger btn-small">↺ Reset</button>
-                <button id="btnSync" class="btn btn-primary btn-small" title="Sincronizar com outro dispositivo">🔄 Sincronizar</button>
+                <div class="header-actions">
+                    <button id="btnReset" class="btn btn-danger btn-small">↺ Reset</button>
+                    <button id="btnSync" class="btn btn-primary btn-small" title="Sincronizar com outro dispositivo">🔄 Sincronizar</button>
+                </div>
             </div>
 
             <div class="content">
@@ -58,6 +60,7 @@
                             <input id="runnerNumber" class="input-field" type="text" placeholder="Nº corredor (ex: 01, 02...)" inputmode="numeric">
                             <button id="btnRegister" class="btn btn-success btn-large">✓</button>
                         </div>
+                        <p class="hint-text">Enter registra, clique no corredor no placar para editar, e use Sincronizar para gerar o QR.</p>
                         <div id="message" class="registration-message"></div>
                     </div>
                 </section>
