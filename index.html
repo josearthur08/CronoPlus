@@ -36,6 +36,7 @@
                     <span id="genderBadge" class="gender-badge"></span>
                 </div>
                 <button id="btnReset" class="btn btn-danger btn-small">↺ Reset</button>
+                <button id="btnSync" class="btn btn-primary btn-small" title="Sincronizar com outro dispositivo">🔄 Sincronizar</button>
             </div>
 
             <div class="content">
@@ -54,7 +55,7 @@
                     <div class="registration-card">
                         <h3>📝 Registrar Chegada</h3>
                         <div class="input-group">
-                            <input id="runnerNumber" class="input-field" type="number" placeholder="Nº corredor" min="1">
+                            <input id="runnerNumber" class="input-field" type="text" placeholder="Nº corredor (ex: 01, 02...)" inputmode="numeric">
                             <button id="btnRegister" class="btn btn-success btn-large">✓</button>
                         </div>
                         <div id="message" class="registration-message"></div>
@@ -74,6 +75,7 @@
             </div>
 
             <div class="action-section">
+                <button id="btnScoreboardPdf" class="btn btn-primary btn-large">📄 Placar PDF</button>
                 <button id="btnReport" class="btn btn-primary btn-large">📊 Gerar Planilha Final</button>
             </div>
         </div>
@@ -93,9 +95,55 @@
                 </div>
             </div>
         </div>
+
+        <!-- MODAL EDITAR REGISTRO -->
+        <div id="modalEdit" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Editar Registro</h2>
+                    <button class="modal-close" onclick="closeEditModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Número do Corredor</label>
+                        <input id="editRunnerNumber" type="text" class="input-field" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Volta</label>
+                        <input id="editRunnerVolta" type="number" class="input-field" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Tempo (em segundos)</label>
+                        <input id="editRunnerTime" type="number" class="input-field" min="0">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-danger" onclick="deleteRunner()">🗑️ Deletar</button>
+                    <button class="btn btn-primary" onclick="saveEditRunner()">💾 Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL QR CODE -->
+        <div id="modalQR" class="modal">
+            <div class="modal-content modal-qr">
+                <div class="modal-header">
+                    <h2>Sincronizar Dispositivos</h2>
+                    <button class="modal-close" onclick="closeQRModal()">✕</button>
+                </div>
+                <div class="modal-body" style="text-align: center;">
+                    <p style="margin-bottom: 15px; color: #666;">Escaneie este QR Code em outro dispositivo:</p>
+                    <div id="qrcode" style="display: inline-block; padding: 20px; background: white; border-radius: 10px; margin-bottom: 15px;"></div>
+                    <p id="sessionCode" style="font-family: monospace; font-size: 14px; color: #999; word-break: break-all;"></p>
+                    <p style="margin-top: 15px; font-size: 12px; color: #999;">Código de sessão será válido por 30 minutos</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.full.min.js?v=20260209007"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="app-v2.js?v=20260209007"></script>
 </body>
 </html>
