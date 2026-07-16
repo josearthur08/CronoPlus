@@ -80,7 +80,10 @@ let state = {
     finished: localStorage.getItem('finished') === 'true',
     chronoInterval: null,
     sessionId: localStorage.getItem('sessionId') || generateSessionId(),
-    editingRunner: null
+    editingRunner: null,
+    syncTimer: null,
+    syncEnabled: false,
+    syncRole: 'host'
 };
 
 function generateSessionId() {
@@ -95,7 +98,67 @@ function save() {
     localStorage.setItem('startTime', state.startTime || '');
     localStorage.setItem('running', state.running);
     localStorage.setItem('finished', state.finished);
+    localStorage.setItem('sessionId', state.sessionId);
     console.log('💾 Estado salvo');
+    syncToServer();
+}
+
+function getSyncEndpoint() {
+    return new URL('sync.php', window.location.href).toString();
+}
+
+async function syncToServer() {
+    if (!state.syncEnabled || state.syncRole !== 'host') return;
+
+    try {
+        await fetch(getSyncEndpoint(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'save',
+                sessionId: state.sessionId,
+                state: {
+                    gender: state.gender,
+                    runners: state.runners,
+                    startTime: state.startTime,
+                    running: state.running,
+                    finished: state.finished
+                }
+            })
+        });
+    } catch (error) {
+        console.log('Falha ao sincronizar com servidor:', error);
+    }
+}
+
+async function loadRemoteState() {
+    if (!state.syncEnabled || !state.sessionId) return;
+
+    try {
+        const response = await fetch(`${getSyncEndpoint()}?action=load&sessionId=${encodeURIComponent(state.sessionId)}`, {
+            cache: 'no-store'
+        });
+
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        if (!payload || !payload.state) return;
+
+        const remoteState = payload.state;
+        state.gender = remoteState.gender || state.gender;
+        state.runners = Array.isArray(remoteState.runners) ? remoteState.runners : state.runners;
+        state.startTime = remoteState.startTime || state.startTime;
+        state.running = !!remoteState.running;
+        state.finished = !!remoteState.finished;
+
+        save();
+        if (state.gender) updateDisplay();
+        updateScoreboard();
+    } catch (error) {
+        console.log('Falha ao carregar sincronização remota:', error);
+    }
 }
 
 // ============================================================================
@@ -126,6 +189,22 @@ function showMessage(text, type = 'info') {
     }
     
     setTimeout(() => { msg.textContent = ''; msg.className = 'registration-message'; }, 3500);
+}
+
+function scheduleSyncPull() {
+    if (state.syncTimer) clearInterval(state.syncTimer);
+    state.syncTimer = setInterval(() => {
+        loadRemoteState();
+    }, 2500);
+}
+
+function enableSyncMode(syncId, role = 'client') {
+    if (!syncId) return;
+    state.sessionId = syncId;
+    state.syncEnabled = true;
+    state.syncRole = role;
+    localStorage.setItem('sessionId', state.sessionId);
+    scheduleSyncPull();
 }
 
 // ============================================================================
@@ -862,8 +941,9 @@ window.addEventListener('load', () => {
     const params = new URLSearchParams(window.location.search);
     const syncId = params.get('sync');
     if (syncId) {
-        showMessage('🔗 Conectando ao dispositivo original...', 'info');
-        // Em uma implementação real, aqui iria buscar os dados da sessão
+        enableSyncMode(syncId, 'client');
+        showMessage('🔗 Sincronização conectada. Atualizando dados...', 'info');
+        loadRemoteState();
     }
 });
 
@@ -911,6 +991,11 @@ if (state.finished) {
     }
 } else {
     showScreen('SexSelection');
+}
+
+if (window.location.pathname.includes('CRONOPLUS')) {
+    state.syncEnabled = true;
+    scheduleSyncPull();
 }
 
 // Fechar modals com ESC
