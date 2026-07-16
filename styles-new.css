@@ -238,6 +238,13 @@ body {
     position: relative;
 }
 
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
 .header-left {
     display: flex;
     align-items: center;
@@ -471,6 +478,11 @@ body {
     max-height: 90vh;
     overflow-y: auto;
     animation: slideUp 0.3s ease-out;
+}
+
+.modal-content form,
+.modal-content .modal-body {
+    width: 100%;
 }
 
 .modal-qr {
@@ -911,6 +923,91 @@ body {
 
 /* RESPONSIVO */
 @media (max-width: 768px) {
+    body {
+        overflow: auto;
+    }
+
+    .header {
+        padding: 14px 16px;
+        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-left {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .header-actions .btn {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    #screenMain > .header {
+        padding-bottom: 12px;
+    }
+
+    .chrono-section,
+    .registration-section,
+    .scoreboard-section,
+    .action-section {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .chrono-card h3,
+    .registration-card h3,
+    .scoreboard-header h3 {
+        font-size: 0.85rem;
+    }
+
+    .scoreboard-header {
+        align-items: flex-start;
+    }
+
+    .scoreboard-header h3 {
+        line-height: 1.2;
+    }
+
+    .runner-count {
+        align-self: center;
+    }
+
+    .input-group {
+        gap: 10px;
+    }
+
+    .input-field {
+        font-size: 1rem;
+        padding: 12px 14px;
+    }
+
+    .modal-content {
+        width: calc(100% - 24px);
+        max-height: 88vh;
+    }
+
+    .modal-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-actions {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .scoreboard {
+        min-height: 240px;
+    }
+
     .sex-buttons-group {
         grid-template-columns: 1fr;
         max-width: 100%;
@@ -938,8 +1035,9 @@ body {
     }
 
     .runner-row {
-        grid-template-columns: 60px 1fr 60px 100px;
-        padding: 12px 15px;
+        grid-template-columns: 44px 1fr 52px 88px;
+        padding: 10px 12px;
+        gap: 8px;
     }
 
     .chrono-display {
@@ -962,12 +1060,28 @@ body {
 
     .action-section {
         flex-direction: column;
+        gap: 10px;
     }
 }
 
 @media (max-width: 480px) {
+    .header-left,
+    .header-actions {
+        gap: 6px;
+    }
+
     .header-left h1 {
         font-size: 1.3rem;
+    }
+
+    .gender-badge {
+        padding: 6px 10px;
+        font-size: 0.72rem;
+    }
+
+    .header-actions .btn,
+    .action-section .btn {
+        min-height: 44px;
     }
 
     .sex-selection-container h1 {
@@ -1003,20 +1117,33 @@ body {
     }
 
     .chrono-display {
-        font-size: 2.5rem;
-        min-height: 80px;
+        font-size: 2.2rem;
+        min-height: 70px;
     }
 
     .runner-row {
-        grid-template-columns: 50px 1fr 50px 80px;
+        grid-template-columns: 40px 1fr 48px 82px;
     }
 
     .runner-position {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .runner-number {
-        font-size: 1rem;
+        font-size: 0.95rem;
+    }
+
+    .runner-volta {
+        padding: 3px 6px;
+        font-size: 0.78rem;
+    }
+
+    .runner-time {
+        font-size: 0.82rem;
+    }
+
+    .report-container {
+        margin: 10px;
     }
 }
 
