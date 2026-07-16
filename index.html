@@ -60,7 +60,11 @@
                             <input id="runnerNumber" class="input-field" type="text" placeholder="Nº corredor (ex: 01, 02...)" inputmode="numeric">
                             <button id="btnRegister" class="btn btn-success btn-large">✓</button>
                         </div>
-                        <p class="hint-text">Enter registra, clique no corredor no placar para editar, e use Sincronizar para gerar o QR.</p>
+                        <div class="helper-actions">
+                            <button id="btnCamera" class="btn btn-secondary btn-small">📷 Câmera</button>
+                            <button id="btnSpeakLast" class="btn btn-secondary btn-small">🔊 Falar último</button>
+                        </div>
+                        <p class="hint-text">Enter registra, a câmera pode ajudar na conferência, e o placar pode ser editado ao toque.</p>
                         <div id="message" class="registration-message"></div>
                     </div>
                 </section>
@@ -136,9 +140,31 @@
                 </div>
                 <div class="modal-body" style="text-align: center;">
                     <p style="margin-bottom: 15px; color: #666;">Escaneie este QR Code em outro dispositivo:</p>
+                    <div class="form-group sync-url-group">
+                        <label>Endereço do sistema</label>
+                        <input id="syncBaseUrlInput" type="text" class="input-field" placeholder="http://192.168.0.10/CRONOPLUS">
+                        <button class="btn btn-secondary btn-small" onclick="saveSyncBaseUrl()">Salvar endereço</button>
+                    </div>
                     <div id="qrcode" style="display: inline-block; padding: 20px; background: white; border-radius: 10px; margin-bottom: 15px;"></div>
                     <p id="sessionCode" style="font-family: monospace; font-size: 14px; color: #999; word-break: break-all;"></p>
                     <p style="margin-top: 15px; font-size: 12px; color: #999;">Código de sessão será válido por 30 minutos</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="modalCamera" class="modal">
+            <div class="modal-content modal-camera">
+                <div class="modal-header">
+                    <h2>Câmera de Apoio</h2>
+                    <button class="modal-close" onclick="closeCameraModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <video id="cameraPreview" autoplay playsinline class="camera-preview"></video>
+                    <canvas id="cameraCanvas" class="camera-canvas"></canvas>
+                    <div class="modal-actions camera-actions">
+                        <button class="btn btn-secondary" onclick="closeCameraModal()">Fechar</button>
+                        <button class="btn btn-primary" onclick="captureFrame()">Capturar</button>
+                    </div>
                 </div>
             </div>
         </div>
