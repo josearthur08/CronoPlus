@@ -531,6 +531,17 @@ body {
     padding: 20px;
 }
 
+.sync-url-group {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+.sync-url-group .btn {
+    width: 100%;
+}
+
 .modal-actions {
     padding: 20px;
     border-top: 1px solid #e5e7eb;
@@ -928,7 +939,7 @@ body {
     }
 
     .header {
-        padding: 14px 16px;
+        padding: 14px 14px;
         gap: 10px;
         flex-direction: column;
         align-items: stretch;
@@ -957,8 +968,8 @@ body {
     .registration-section,
     .scoreboard-section,
     .action-section {
-        padding-left: 12px;
-        padding-right: 12px;
+        padding-left: 14px;
+        padding-right: 14px;
     }
 
     .chrono-card h3,
@@ -989,7 +1000,7 @@ body {
     }
 
     .modal-content {
-        width: calc(100% - 24px);
+        width: calc(100% - 20px);
         max-height: 88vh;
     }
 
@@ -1035,8 +1046,8 @@ body {
     }
 
     .runner-row {
-        grid-template-columns: 44px 1fr 52px 88px;
-        padding: 10px 12px;
+        grid-template-columns: 44px 1fr 58px 84px;
+        padding: 12px 12px;
         gap: 8px;
     }
 
@@ -1060,7 +1071,7 @@ body {
 
     .action-section {
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
     }
 }
 
@@ -1082,6 +1093,14 @@ body {
     .header-actions .btn,
     .action-section .btn {
         min-height: 44px;
+    }
+
+    .header-actions {
+        flex-direction: column;
+    }
+
+    .header-actions .btn {
+        width: 100%;
     }
 
     .sex-selection-container h1 {
@@ -1117,12 +1136,13 @@ body {
     }
 
     .chrono-display {
-        font-size: 2.2rem;
-        min-height: 70px;
+        font-size: 2.4rem;
+        min-height: 76px;
     }
 
     .runner-row {
-        grid-template-columns: 40px 1fr 48px 82px;
+        grid-template-columns: 44px 1fr 56px 78px;
+        padding: 11px 10px;
     }
 
     .runner-position {
@@ -1144,6 +1164,13 @@ body {
 
     .report-container {
         margin: 10px;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-actions {
+        padding-left: 12px;
+        padding-right: 12px;
     }
 }
 
