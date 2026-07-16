@@ -80,9 +80,10 @@ let state = {
     finished: localStorage.getItem('finished') === 'true',
     chronoInterval: null,
     sessionId: localStorage.getItem('sessionId') || generateSessionId(),
+    syncBaseUrl: localStorage.getItem('syncBaseUrl') || window.location.origin,
     editingRunner: null,
     syncTimer: null,
-    syncEnabled: false,
+    syncEnabled: true,
     syncRole: 'host'
 };
 
@@ -99,12 +100,22 @@ function save() {
     localStorage.setItem('running', state.running);
     localStorage.setItem('finished', state.finished);
     localStorage.setItem('sessionId', state.sessionId);
+    localStorage.setItem('syncBaseUrl', state.syncBaseUrl || '');
     console.log('💾 Estado salvo');
     syncToServer();
 }
 
 function getSyncEndpoint() {
     return new URL('sync.php', window.location.href).toString();
+}
+
+function getSyncBaseUrl() {
+    const savedBaseUrl = (state.syncBaseUrl || localStorage.getItem('syncBaseUrl') || '').trim();
+    if (savedBaseUrl) {
+        return savedBaseUrl.replace(/\/$/, '');
+    }
+
+    return window.location.origin.replace(/\/$/, '');
 }
 
 async function syncToServer() {
@@ -153,7 +164,11 @@ async function loadRemoteState() {
         state.running = !!remoteState.running;
         state.finished = !!remoteState.finished;
 
-        save();
+        localStorage.setItem('gender', state.gender || '');
+        localStorage.setItem('runners', JSON.stringify(state.runners));
+        localStorage.setItem('startTime', state.startTime || '');
+        localStorage.setItem('running', state.running);
+        localStorage.setItem('finished', state.finished);
         if (state.gender) updateDisplay();
         updateScoreboard();
     } catch (error) {
@@ -198,13 +213,25 @@ function scheduleSyncPull() {
     }, 2500);
 }
 
+function saveSyncBaseUrl() {
+    const input = document.getElementById('syncBaseUrlInput');
+    if (!input) return;
+
+    state.syncBaseUrl = input.value.trim().replace(/\/$/, '');
+    localStorage.setItem('syncBaseUrl', state.syncBaseUrl);
+    state.syncEnabled = true;
+    generateQRCode();
+}
+
 function enableSyncMode(syncId, role = 'client') {
     if (!syncId) return;
     state.sessionId = syncId;
     state.syncEnabled = true;
     state.syncRole = role;
     localStorage.setItem('sessionId', state.sessionId);
-    scheduleSyncPull();
+    if (role === 'client') {
+        scheduleSyncPull();
+    }
 }
 
 // ============================================================================
@@ -886,12 +913,13 @@ function generateQRCode() {
     const qrContainer = document.getElementById('qrcode');
     qrContainer.innerHTML = ''; // Limpar anterior
     
-    // Gerar URL com session ID
-    const currentUrl = window.location.origin + window.location.pathname;
-    const syncUrl = `${currentUrl}?sync=${state.sessionId}`;
+    const baseUrlInput = document.getElementById('syncBaseUrlInput');
+    const baseUrl = (baseUrlInput ? baseUrlInput.value : getSyncBaseUrl()).trim().replace(/\/$/, '');
+    const syncUrl = `${baseUrl}${window.location.pathname}?sync=${state.sessionId}`;
     
     // Mostrar código de sessão
-    document.getElementById('sessionCode').textContent = state.sessionId;
+    const sessionCodeEl = document.getElementById('sessionCode');
+    if (sessionCodeEl) sessionCodeEl.textContent = syncUrl;
     
     // Gerar QR code
     new QRCode(qrContainer, {
@@ -905,6 +933,10 @@ function generateQRCode() {
 }
 
 function openSyncModal() {
+    const baseUrlInput = document.getElementById('syncBaseUrlInput');
+    if (baseUrlInput) {
+        baseUrlInput.value = state.syncBaseUrl || getSyncBaseUrl();
+    }
     generateQRCode();
     document.getElementById('modalQR').classList.add('active');
 }
@@ -991,11 +1023,6 @@ if (state.finished) {
     }
 } else {
     showScreen('SexSelection');
-}
-
-if (window.location.pathname.includes('CRONOPLUS')) {
-    state.syncEnabled = true;
-    scheduleSyncPull();
 }
 
 // Fechar modals com ESC
