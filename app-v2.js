@@ -1,6 +1,74 @@
 console.log('🚀 CRONOPLUS v2 iniciando...');
 
 // ============================================================================
+// GERADOR DE ÁUDIO
+// ============================================================================
+
+function playSound(type) {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioContext.currentTime;
+        
+        if (type === 'success') {
+            // Som de sucesso (dois beeps)
+            const osc1 = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            osc1.frequency.value = 800;
+            osc2.frequency.value = 1200;
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 0.2);
+            osc2.stop(now + 0.2);
+        } else if (type === 'error') {
+            // Som de erro (beep baixo)
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            osc.frequency.value = 400;
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'warning') {
+            // Som de aviso (beep médio)
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            osc.frequency.value = 600;
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+    } catch (e) {
+        console.log('Áudio não disponível');
+    }
+}
+
+function vibrate(pattern) {
+    if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+    }
+}
+
+// ============================================================================
 // ESTADO
 // ============================================================================
 
@@ -10,8 +78,16 @@ let state = {
     startTime: localStorage.getItem('startTime') || null,
     running: localStorage.getItem('running') === 'true',
     finished: localStorage.getItem('finished') === 'true',
-    chronoInterval: null
+    chronoInterval: null,
+    sessionId: localStorage.getItem('sessionId') || generateSessionId(),
+    editingRunner: null
 };
+
+function generateSessionId() {
+    const id = 'cronoplus_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    localStorage.setItem('sessionId', id);
+    return id;
+}
 
 function save() {
     localStorage.setItem('gender', state.gender || '');
@@ -32,11 +108,24 @@ function showScreen(name) {
     console.log('📺 Tela:', name);
 }
 
-function showMessage(text, type) {
+function showMessage(text, type = 'info') {
     const msg = document.getElementById('message');
     msg.textContent = text;
     msg.className = 'registration-message ' + type;
-    setTimeout(() => { msg.textContent = ''; msg.className = 'registration-message'; }, 3000);
+    
+    // Som e vibração
+    if (type === 'success') {
+        playSound('success');
+        vibrate([50, 100, 50]);
+    } else if (type === 'error') {
+        playSound('error');
+        vibrate([100, 50, 100]);
+    } else if (type === 'warning') {
+        playSound('warning');
+        vibrate([75]);
+    }
+    
+    setTimeout(() => { msg.textContent = ''; msg.className = 'registration-message'; }, 3500);
 }
 
 // ============================================================================
@@ -98,27 +187,34 @@ document.getElementById('runnerNumber').addEventListener('keypress', (e) => {
 });
 
 function registerRunner() {
-    if (state.finished) { showMessage('❌ Corrida finalizada!', 'error'); return; }
-    if (!state.running) { showMessage('❌ Inicie cronômetro!', 'error'); return; }
+    if (state.finished) { showMessage('❌ Corrida finalizada! Reinicie para nova corrida.', 'error'); return; }
+    if (!state.running) { showMessage('⏹️ Inicie o cronômetro primeiro!', 'error'); return; }
     
     const input = document.getElementById('runnerNumber');
     const num = input.value.trim();
     
-    if (!num) { showMessage('❌ Insira número!', 'error'); return; }
-    if (isNaN(num) || num <= 0) { showMessage('❌ Número inválido!', 'error'); return; }
-    
-    if (state.runners.find(r => r.n == num && r.g === state.gender)) {
-        showMessage('⚠️ Já registrado!', 'error');
-        input.value = '';
-        input.focus();
-        return;
-    }
+    if (!num) { showMessage('📝 Digite o número do corredor', 'warning'); return; }
+    if (!/^\d+$/.test(num)) { showMessage('❌ Apenas números são permitidos!', 'error'); return; }
+    if (parseInt(num) <= 0) { showMessage('❌ Número deve ser maior que 0!', 'error'); return; }
     
     const elapsed = Math.floor((new Date().getTime() - parseInt(state.startTime)) / 1000);
-    state.runners.push({ n: parseInt(num), g: state.gender, t: elapsed, a: new Date().getTime() });
-    save();
     
-    showMessage(`✅ Corredor #${num} registrado!`, 'success');
+    // Procurar se corredor já existe
+    const existingRunner = state.runners.find(r => r.n === num && r.g === state.gender);
+    
+    if (existingRunner) {
+        // Se existe, atualizar tempo e incrementar volta
+        existingRunner.t = elapsed;
+        existingRunner.v = existingRunner.v + 1;
+        existingRunner.a = new Date().getTime();
+        showMessage(`✅ Corredor #${num} - Volta ${existingRunner.v}! 🏃`, 'success');
+    } else {
+        // Se não existe, criar novo registro
+        state.runners.push({ n: num, g: state.gender, t: elapsed, a: new Date().getTime(), v: 1 });
+        showMessage(`✅ Novo corredor #${num} registrado! Volta 1 ✨`, 'success');
+    }
+    
+    save();
     input.value = '';
     input.focus();
     updateScoreboard();
@@ -130,22 +226,191 @@ function registerRunner() {
 
 function updateScoreboard() {
     const runners = state.runners.filter(r => r.g === state.gender).sort((a, b) => a.a - b.a);
-    const html = runners.length === 0 ? '<div class="empty-state">Aguardando...</div>' :
-        runners.map((r, i) => {
+    
+    // Remover duplicatas: manter apenas o último registro de cada corredor
+    const uniqueRunners = [];
+    const runnerMap = new Map();
+    
+    runners.forEach(r => {
+        runnerMap.set(r.n, r);
+    });
+    
+    runnerMap.forEach(r => uniqueRunners.push(r));
+    uniqueRunners.sort((a, b) => a.a - b.a);
+    
+    const html = uniqueRunners.length === 0 ? '<div class="empty-state">Aguardando...</div>' :
+        uniqueRunners.map((r, i) => {
             const h = Math.floor(r.t / 3600);
             const m = Math.floor((r.t % 3600) / 60);
             const s = r.t % 60;
             return `
-            <div class="runner-row">
+            <div class="runner-row" onclick="openEditModal('${r.n}', '${r.g}')">
                 <div class="runner-position">${i + 1}º</div>
                 <div class="runner-number">#${r.n}</div>
+                <div class="runner-volta">Volta ${r.v}</div>
                 <div class="runner-time">${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</div>
             </div>`;
         }).join('');
     document.getElementById('scoreboard').innerHTML = html;
     const countEl = document.getElementById('runnerCount');
-    if (countEl) countEl.textContent = String(runners.length);
+    if (countEl) countEl.textContent = String(uniqueRunners.length);
+    
+    // Adicionar estilos de cursor ao placar
+    document.querySelectorAll('.runner-row').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.style.transition = 'background 0.2s';
+        el.addEventListener('mouseenter', () => el.style.background = 'rgba(0,0,0,0.05)');
+        el.addEventListener('mouseleave', () => el.style.background = '');
+    });
 }
+
+// ============================================================================
+// MODAL EDITAR REGISTRO
+// ============================================================================
+
+function openEditModal(runnerNumber, gender) {
+    const runner = state.runners.find(r => r.n === runnerNumber && r.g === gender);
+    if (!runner) return;
+    
+    state.editingRunner = runner;
+    
+    document.getElementById('editRunnerNumber').value = runner.n;
+    document.getElementById('editRunnerVolta').value = runner.v;
+    document.getElementById('editRunnerTime').value = runner.t;
+    
+    document.getElementById('modalEdit').classList.add('active');
+}
+
+function closeEditModal() {
+    document.getElementById('modalEdit').classList.remove('active');
+    state.editingRunner = null;
+}
+
+function saveEditRunner() {
+    if (!state.editingRunner) return;
+    
+    const newNumber = document.getElementById('editRunnerNumber').value.trim();
+    const newVolta = parseInt(document.getElementById('editRunnerVolta').value);
+    const newTime = parseInt(document.getElementById('editRunnerTime').value);
+    
+    if (!newNumber || !/^\d+$/.test(newNumber)) {
+        showMessage('❌ Número inválido!', 'error');
+        return;
+    }
+    
+    if (newVolta < 1) {
+        showMessage('❌ Volta deve ser pelo menos 1!', 'error');
+        return;
+    }
+    
+    if (newTime < 0) {
+        showMessage('❌ Tempo não pode ser negativo!', 'error');
+        return;
+    }
+    
+    state.editingRunner.n = newNumber;
+    state.editingRunner.v = newVolta;
+    state.editingRunner.t = newTime;
+    
+    save();
+    closeEditModal();
+    updateScoreboard();
+    showMessage('✅ Registro atualizado!', 'success');
+}
+
+function deleteRunner() {
+    if (!state.editingRunner) return;
+    
+    if (confirm(`Deletar corredor #${state.editingRunner.n}?`)) {
+        const idx = state.runners.indexOf(state.editingRunner);
+        if (idx > -1) {
+            state.runners.splice(idx, 1);
+            save();
+            closeEditModal();
+            updateScoreboard();
+            showMessage('🗑️ Registro deletado!', 'warning');
+        }
+    }
+}
+
+// ============================================================================
+// BAIXAR PLACAR EM PDF
+// ============================================================================
+
+function downloadScoreboardPdf() {
+    if (state.runners.length === 0) {
+        showMessage('❌ Nenhum corredor para exportar!', 'error');
+        return;
+    }
+    
+    const runners = state.runners.filter(r => r.g === state.gender).sort((a, b) => a.a - b.a);
+    
+    // Remover duplicatas
+    const uniqueRunners = [];
+    const runnerMap = new Map();
+    
+    runners.forEach(r => {
+        runnerMap.set(r.n, r);
+    });
+    
+    runnerMap.forEach(r => uniqueRunners.push(r));
+    uniqueRunners.sort((a, b) => a.a - b.a);
+    
+    // Criar HTML para o PDF
+    let html = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; background: #f3f4f6;">
+        <h1 style="text-align: center; color: #dc2626; margin-bottom: 10px;">CRONOPLUS</h1>
+        <h2 style="text-align: center; color: #374151; margin-bottom: 20px;">Placar - ${state.gender === 'M' ? 'MASCULINO' : 'FEMININO'}</h2>
+        <p style="text-align: center; color: #6b7280; margin-bottom: 20px;">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+        
+        <table style="width: 100%; border-collapse: collapse; background: white;">
+            <thead>
+                <tr style="background: #dc2626; color: white;">
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold;">POSIÇÃO</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold;">CORREDOR</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold;">VOLTA</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold;">TEMPO</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${uniqueRunners.map((r, i) => {
+                    const h = Math.floor(r.t / 3600);
+                    const m = Math.floor((r.t % 3600) / 60);
+                    const s = r.t % 60;
+                    const bgColor = i % 2 === 0 ? '#f3f4f6' : '#ffffff';
+                    return `
+                    <tr style="background: ${bgColor};">
+                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${i + 1}º</td>
+                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">#${r.n}</td>
+                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: #dc2626; font-weight: bold;">Volta ${r.v}</td>
+                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-family: monospace;">${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</td>
+                    </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+        
+        <p style="text-align: center; color: #6b7280; margin-top: 20px; font-size: 12px;">Total de corredores: ${uniqueRunners.length}</p>
+    </div>
+    `;
+    
+    // Gerar PDF
+    const element = document.createElement('div');
+    element.innerHTML = html;
+    
+    const options = {
+        margin: 10,
+        filename: `Placar_${state.gender === 'M' ? 'Masculino' : 'Feminino'}_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    };
+    
+    html2pdf().set(options).from(element).save();
+    showMessage('✅ PDF gerado com sucesso!', 'success');
+}
+
+document.getElementById('btnScoreboardPdf').addEventListener('click', downloadScoreboardPdf);
 
 // ============================================================================
 // RELATÓRIO
@@ -157,28 +422,39 @@ document.getElementById('btnReport').addEventListener('click', () => {
     save();
     if (state.chronoInterval) clearInterval(state.chronoInterval);
     
-    const M = state.runners.filter(r => r.g === 'M').sort((a, b) => a.a - b.a);
-    const F = state.runners.filter(r => r.g === 'F').sort((a, b) => a.a - b.a);
+    // Remover duplicatas: manter apenas o último registro de cada corredor
+    const uniqueRunners = [];
+    const runnerMap = new Map();
+    
+    state.runners.forEach(r => {
+        const key = r.n + '_' + r.g;
+        runnerMap.set(key, r);
+    });
+    
+    runnerMap.forEach(r => uniqueRunners.push(r));
+    
+    const M = uniqueRunners.filter(r => r.g === 'M').sort((a, b) => a.a - b.a);
+    const F = uniqueRunners.filter(r => r.g === 'F').sort((a, b) => a.a - b.a);
     
     let html = '';
     if (M.length > 0) {
-        html += '<div class="report-section"><div class="report-section-title">MASCULINO</div><table class="report-table"><thead><tr><th>POSIÇÃO</th><th>CORREDOR</th><th>TEMPO</th></tr></thead><tbody>';
+        html += '<div class="report-section"><div class="report-section-title">MASCULINO</div><table class="report-table"><thead><tr><th>POSIÇÃO</th><th>CORREDOR</th><th>VOLTA</th><th>TEMPO</th></tr></thead><tbody>';
         M.forEach((r, i) => {
             const h = Math.floor(r.t / 3600);
             const m = Math.floor((r.t % 3600) / 60);
             const s = r.t % 60;
-            html += `<tr><td>${i+1}º</td><td>#${r.n}</td><td>${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</td></tr>`;
+            html += `<tr><td>${i+1}º</td><td>#${r.n}</td><td>${r.v}</td><td>${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</td></tr>`;
         });
         html += '</tbody></table></div>';
     }
     
     if (F.length > 0) {
-        html += '<div class="report-section"><div class="report-section-title">FEMININO</div><table class="report-table"><thead><tr><th>POSIÇÃO</th><th>CORREDOR</th><th>TEMPO</th></tr></thead><tbody>';
+        html += '<div class="report-section"><div class="report-section-title">FEMININO</div><table class="report-table"><thead><tr><th>POSIÇÃO</th><th>CORREDOR</th><th>VOLTA</th><th>TEMPO</th></tr></thead><tbody>';
         F.forEach((r, i) => {
             const h = Math.floor(r.t / 3600);
             const m = Math.floor((r.t % 3600) / 60);
             const s = r.t % 60;
-            html += `<tr><td>${i+1}º</td><td>#${r.n}</td><td>${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</td></tr>`;
+            html += `<tr><td>${i+1}º</td><td>#${r.n}</td><td>${r.v}</td><td>${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</td></tr>`;
         });
         html += '</tbody></table></div>';
     }
@@ -457,8 +733,19 @@ function buildGeneralSheet(M, F) {
 }
 
 document.getElementById('btnExcel').addEventListener('click', async () => {
-    const M = state.runners.filter(r => r.g === 'M').sort((a, b) => a.a - b.a);
-    const F = state.runners.filter(r => r.g === 'F').sort((a, b) => a.a - b.a);
+    // Remover duplicatas: manter apenas o último registro de cada corredor
+    const uniqueRunners = [];
+    const runnerMap = new Map();
+    
+    state.runners.forEach(r => {
+        const key = r.n + '_' + r.g;
+        runnerMap.set(key, r);
+    });
+    
+    runnerMap.forEach(r => uniqueRunners.push(r));
+    
+    const M = uniqueRunners.filter(r => r.g === 'M').sort((a, b) => a.a - b.a);
+    const F = uniqueRunners.filter(r => r.g === 'F').sort((a, b) => a.a - b.a);
 
     if (M.length === 0 && F.length === 0) {
         alert('❌ Nenhum corredor para exportar.');
@@ -513,6 +800,74 @@ document.getElementById('btnReset').addEventListener('click', () => {
 });
 
 // ============================================================================
+// SINCRONIZAÇÃO MULTI-DISPOSITIVO
+// ============================================================================
+
+function generateQRCode() {
+    const qrContainer = document.getElementById('qrcode');
+    qrContainer.innerHTML = ''; // Limpar anterior
+    
+    // Gerar URL com session ID
+    const currentUrl = window.location.origin + window.location.pathname;
+    const syncUrl = `${currentUrl}?sync=${state.sessionId}`;
+    
+    // Mostrar código de sessão
+    document.getElementById('sessionCode').textContent = state.sessionId;
+    
+    // Gerar QR code
+    new QRCode(qrContainer, {
+        text: syncUrl,
+        width: 200,
+        height: 200,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+    });
+}
+
+function openSyncModal() {
+    generateQRCode();
+    document.getElementById('modalQR').classList.add('active');
+}
+
+function closeQRModal() {
+    document.getElementById('modalQR').classList.remove('active');
+}
+
+document.getElementById('btnSync').addEventListener('click', openSyncModal);
+
+// Sincronizar com localStorage events (entre abas do mesmo navegador)
+window.addEventListener('storage', (e) => {
+    if (e.key === 'cronoplus_runners') {
+        try {
+            const remoteRunners = JSON.parse(e.newValue || '[]');
+            // Mesclar runners sem perder locais
+            remoteRunners.forEach(remoteRunner => {
+                const exists = state.runners.find(r => r.n === remoteRunner.n && r.g === remoteRunner.g);
+                if (!exists) {
+                    state.runners.push(remoteRunner);
+                }
+            });
+            save();
+            updateScoreboard();
+            showMessage('🔄 Dados sincronizados de outro dispositivo!', 'info');
+        } catch (e) {
+            console.log('Erro ao sincronizar:', e);
+        }
+    }
+});
+
+// Checar se veio de QR code (sync)
+window.addEventListener('load', () => {
+    const params = new URLSearchParams(window.location.search);
+    const syncId = params.get('sync');
+    if (syncId) {
+        showMessage('🔗 Conectando ao dispositivo original...', 'info');
+        // Em uma implementação real, aqui iria buscar os dados da sessão
+    }
+});
+
+// ============================================================================
 // INICIALIZAÇÃO
 // ============================================================================
 
@@ -557,6 +912,25 @@ if (state.finished) {
 } else {
     showScreen('SexSelection');
 }
+
+// Fechar modals com ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modals = document.querySelectorAll('.modal.active');
+        modals.forEach(m => m.classList.remove('active'));
+        closeEditModal();
+        closeQRModal();
+    }
+});
+
+// Fechar modal ao clicar fora
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
+    });
+});
 
 // Salvar backup a cada 2 segundos
 setInterval(() => {
